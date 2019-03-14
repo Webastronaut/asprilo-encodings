@@ -179,10 +179,14 @@ article_delivered(R,S,A) :- _ordered(O,A), _target(O,P), _position_station(P,C),
 % only pickup if not processed before
 :- _contains_ordered_product(S,A), _isRobot(R0), pickup(R,S), &tel{ <? article_delivered(R0,S,A) }.
 
+% TODO: shelves may not be picked up or put down more than once
+:- pickup(_,S), _isRobot(R), &tel{ < <? pickup(R,S) }.
+:- putdown(_,S), _isRobot(R), &tel{ < <? putdown(R,S) }.
+
 #program final.
 
 % shelves must not be picked up unless they contain an ordered product
-:- _isShelf(S), not _contains_ordered_product(S,_), _isRobot(R), &tel{ < <? pickup(R,S) }.
+:- _isShelf(S), not _contains_ordered_product(S,_), _isRobot(R), &tel{ <? pickup(R,S) }. % was  &tel{ < <? pickup(R,S) }
 
 % an agent not delivering anything may never move
 :- _contains_ordered_product(S,A), _isRobot(R), not &tel{ (<* ~article_delivered(R,S,A)) -> <* ~move(R) }.
