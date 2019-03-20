@@ -47,15 +47,15 @@ highway(C) :- init(object(highway,_),value(at,C)).
 direction((X,Y)) :- X=-1..1, Y=-1..1, |X+Y|=1.
 nextto((X,Y),(X',Y'),(X+X',Y+Y')) :- position((X,Y)), direction((X',Y')), position((X+X',Y+Y')).
 
-% was in dynamic part initially
+% was in dynamic part
 toShelf(S,C) :- shelved(S,A), ordered(O,A), target(O,P), position_station(P,C).
-#show toShelf/2.
 
 #program dynamic.
 
 { move(R,D) : _direction(D) ;
     pickup(R,S) : _isShelf(S) ;
     putdown(R,S) : _isShelf(S) } 1 :- _isRobot(R).
+move(R) :- move(R,_).
 
 waits(R) :- not pickup(R,_), not putdown(R,_), not move(R,_), _isRobot(R).
 
@@ -129,10 +129,7 @@ occurs(object(robot,R),action(deliver,(O,A))) :- process(product(A),order(O),C),
 occurs(object(robot,R),action(deliver,(O,A))) :- process(product(A),order(O),C), position(S,C), 'carries(robot(R),S), _shelved(S,product(A)).
 occurs(object(robot,R),action(deliver,(O,A,N))) :- process(product(A),order(O),S,N), 'carries(robot(R),S).
 
-%#show occurs/2.
-%#show occurs_a/2.
-%#show occurs_b/2.
-%#show occurs_c/2.
+#show occurs/2.
 % ################################################################################
 % = output-MPPD.ilp
 % ################################################################################
@@ -144,9 +141,6 @@ occurs(object(robot,R),action(deliver,(O,A,N))) :- process(product(A),order(O),S
 % ################################################################################
 %#const rate=1.
 
-%toShelf(S,C) :- _shelved(S,A), _ordered(O,A), _target(O,P), _position_station(P,C).
-%#show toShelf/2.
-
 { process(A,O,C) : _ordered(O,A), _target(O,P), _position_station(P,C) } 1. %rate.
 
 processed(A,O) :- process(A,O,C).
@@ -157,10 +151,10 @@ processed(A,O) :- 'processed(A,O).
 process(A,C) :- process(A,O,C).
 process(C) :- process(A,C).
 
-:- process(A,C), not 'position(S,C) : _shelved(S,A).
+:- process(A,C), not 'position(S,C) : _shelved(S,A). % a product cannot be processed when its respective shelf is not on proper position
 
-:- process(C), 'position(S,C), toShelf(S,C), not 'carries(_,S). % TODO: Whats this?
-:- process(C), 'position(R,C), _isRobot(R), not waits(R). % TODO: Whats this?
+:- process(C), 'position(S,C), toShelf(S,C), not 'carries(_,S). % a shelf on correct position cannot be processed if it's not carried
+:- process(C), 'position(R,C), _isRobot(R), not waits(R). % a process action can only occur if the robot on that position does wait
 
 #program final.
 
@@ -176,15 +170,12 @@ process(C) :- process(A,C).
 
 
 % ################################################################################
-% + CUSTOM CONSTRAINTS
+% + CUSTOM CONSTRAINTS B
 % ################################################################################
 
 #program initial.
 % helper
 contains_ordered_product(S,A) :- ordered(O,A), shelved(S,A).
-
-% a shelf may never occupy the position of a picking station, if it is not its target (domain b specific)
-:- position_station(P,CP), toShelf(S,CS), CP!=CS, &tel{ >? position(S,CP) }.
 
 #program dynamic.
 % helper pred
@@ -199,7 +190,7 @@ article_delivered(robot(R),S,product(A)) :- process(product(A),order(O),C), posi
 % only pickup if not processed before
 :- _contains_ordered_product(S,A), _isRobot(R0), pickup(R,S), &tel{ <? article_delivered(R0,S,A) }.
 
-% TODO: shelves may not be picked up or put down more than once
+% shelves may not be picked up or put down more than once
 :- pickup(_,S), _isRobot(R), &tel{ < <? pickup(R,S) }.
 :- putdown(_,S), _isRobot(R), &tel{ < <? putdown(R,S) }.
 
@@ -208,9 +199,13 @@ article_delivered(robot(R),S,product(A)) :- process(product(A),order(O),C), posi
 % shelves must not be picked up unless they contain an ordered product
 :- _isShelf(S), not _contains_ordered_product(S,_), _isRobot(R), &tel{ <? pickup(R,S) }. % was  &tel{ < <? pickup(R,S) }
 
-% an agent not delivering anything may never move
-:- _contains_ordered_product(S,A), _isRobot(R), not &tel{ (<* ~article_delivered(R,S,A)) -> <* ~move(R) }.
+% an agent not delivering anything may never pickup a shelf
+:- _contains_ordered_product(S,A), _isRobot(R), &tel{ < <* ~article_delivered(R,S,A) }, &tel{ < <? pickup(R,S) }.
+:- _contains_ordered_product(S,A), _isRobot(R), &tel{ < <* ~article_delivered(R,S,A) }, &tel{ < <? putdown(R,S) }.
+
+% a shelf may never occupy the position of a picking station, which is not its target (domain b specific)
+:- position_station(P,CP), toShelf(S,CS), CP!=CS, &tel{ <? position(S,CP) }.
 
 % ################################################################################
-% = CUSTOM CONSTRAINTS
+% = CUSTOM CONSTRAINTS B
 % ################################################################################

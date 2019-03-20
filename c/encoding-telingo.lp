@@ -51,6 +51,7 @@ nextto((X,Y),(X',Y'),(X+X',Y+Y')) :- position((X,Y)), direction((X',Y')), positi
 { move(R,D) : _direction(D) ;
     pickup(R,S) : _isShelf(S) ;
     putdown(R,S) : _isShelf(S) } 1 :- _isRobot(R).
+move(R) :- move(R,_).
 
 waits(R) :- not pickup(R,_), not putdown(R,_), not move(R,_), _isRobot(R).
 
@@ -121,10 +122,10 @@ occurs(object(robot,R),action(move,D)) :- move(robot(R),D).
 occurs(object(robot,R),action(pickup,())) :- pickup(robot(R),_).
 occurs(object(robot,R),action(putdown,())) :- putdown(robot(R),_).
 
-occurs(object(robot,R),action(deliver,(O,A))) :- process(product(A),order(O),C), toShelf(S,C), 'position(robot(R),C).
-occurs(object(robot,R),action(deliver,(O,A))) :- process(product(A),order(O),C), 'atShelf(S,C), 'carries(robot(R),S).
-occurs(object(robot,R),action(deliver,(O,A))) :- process(product(A),order(O),C), position(S,C), 'carries(robot(R),S), _shelved(S,product(A)).
-occurs(object(robot,R),action(deliver,(O,A,N))) :- process(product(A),order(O),S,N), 'carries(robot(R),S).
+occurs_a(object(robot,R),action(deliver,(O,A))) :- process(product(A),order(O),C), toShelf(S,C), 'position(robot(R),C).
+occurs_b(object(robot,R),action(deliver,(O,A))) :- process(product(A),order(O),C), 'atShelf(S,C), 'carries(robot(R),S).
+occurs_c(object(robot,R),action(deliver,(O,A))) :- process(product(A),order(O),C), position(S,C), 'carries(robot(R),S), _shelved(S,product(A)).
+occurs_d(object(robot,R),action(deliver,(O,A,N))) :- process(product(A),order(O),S,N), 'carries(robot(R),S).
 
 #show occurs/2.
 
@@ -158,7 +159,7 @@ processed(A,C) :- 'processed(A,C).
 
 
 % ################################################################################
-% + CUSTOM CONSTRAINTS
+% + CUSTOM CONSTRAINTS C
 % ################################################################################
 
 #program initial.
@@ -179,18 +180,22 @@ article_delivered(R,S,A) :- _ordered(O,A), _target(O,P), _position_station(P,C),
 % only pickup if not processed before
 :- _contains_ordered_product(S,A), _isRobot(R0), pickup(R,S), &tel{ <? article_delivered(R0,S,A) }.
 
-% TODO: shelves may not be picked up or put down more than once
+% shelves may not be picked up or put down more than once
 :- pickup(_,S), _isRobot(R), &tel{ < <? pickup(R,S) }.
 :- putdown(_,S), _isRobot(R), &tel{ < <? putdown(R,S) }.
+
+% waiting on picking station is not allowed (domain c)
+:- _position_station(P,C), position(R,C), 'position(R,C), _isRobot(R).
 
 #program final.
 
 % shelves must not be picked up unless they contain an ordered product
 :- _isShelf(S), not _contains_ordered_product(S,_), _isRobot(R), &tel{ <? pickup(R,S) }. % was  &tel{ < <? pickup(R,S) }
 
-% an agent not delivering anything may never move
-:- _contains_ordered_product(S,A), _isRobot(R), not &tel{ (<* ~article_delivered(R,S,A)) -> <* ~move(R) }.
+% an agent not delivering anything may never pick up or put down a shelf
+:- _contains_ordered_product(S,A), _isRobot(R), &tel{ < <* ~article_delivered(R,S,A) }, &tel{ < <? pickup(R,S) }.
+:- _contains_ordered_product(S,A), _isRobot(R), &tel{ < <* ~article_delivered(R,S,A) }, &tel{ < <? putdown(R,S) }.
 
 % ################################################################################
-% = CUSTOM CONSTRAINTS
+% = CUSTOM CONSTRAINTS C
 % ################################################################################
