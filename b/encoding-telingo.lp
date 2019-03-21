@@ -200,8 +200,8 @@ article_delivered(robot(R),S,product(A)) :- process(product(A),order(O),C), posi
 :- _isShelf(S), not _contains_ordered_product(S,_), _isRobot(R), &tel{ <? pickup(R,S) }. % was  &tel{ < <? pickup(R,S) }
 
 % an agent not delivering anything may never pickup a shelf
-:- _contains_ordered_product(S,A), _isRobot(R), &tel{ < <* ~article_delivered(R,S,A) }, &tel{ < <? pickup(R,S) }.
-:- _contains_ordered_product(S,A), _isRobot(R), &tel{ < <* ~article_delivered(R,S,A) }, &tel{ < <? putdown(R,S) }.
+:- _contains_ordered_product(S,A), _isRobot(R), &tel{ <* ~article_delivered(R,S,A) }, &tel{ <? pickup(R,S) }.
+:- _contains_ordered_product(S,A), _isRobot(R), &tel{ <* ~article_delivered(R,S,A) }, &tel{ <? putdown(R,S) }.
 
 % a shelf may never occupy the position of a picking station, which is not its target (domain b specific)
 :- position_station(P,CP), toShelf(S,CS), CP!=CS, &tel{ <? position(S,CP) }.
