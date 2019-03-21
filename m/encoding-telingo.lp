@@ -59,7 +59,7 @@ moveto(C0,C) :- _nextto(C0,D,C), 'position(R,C0), move(R,D).
 
 occurs(object(robot,R), action(move,D)) :- move(robot(R),D).
 
-%#show occurs/2.
+#show occurs/2.
 
 #program final.
 
@@ -81,12 +81,7 @@ steps(R,X,Y) :- 'steps(R,X,Y), not move(R,_).
 
 #program final.
 % agents should go directly to a shelf
-:- on_target(R,S), 
-    _position(R,(XR,YR)), 
-    _position(S,(XS,YS)),
-    X=|XR-XS|,
-    Y=|YR-YS|,
-    not steps(R,X,Y).
+:- on_target(R,S), _position(R,(XR,YR)), _position(S,(XS,YS)), X=|XR-XS|, Y=|YR-YS|, not steps(R,X,Y).
 
 
 % ################################################################################
