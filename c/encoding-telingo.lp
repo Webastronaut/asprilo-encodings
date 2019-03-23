@@ -181,8 +181,7 @@ article_delivered(R,S,A) :- _ordered(O,A), _target(O,P), _position_station(P,C),
 :- _contains_ordered_product(S,A), _isRobot(R0), pickup(R,S), &tel{ <? article_delivered(R0,S,A) }.
 
 % shelves may not be picked up or put down more than once
-:- pickup(_,S), _isRobot(R), &tel{ < <? pickup(R,S) }.
-:- putdown(_,S), _isRobot(R), &tel{ < <? putdown(R,S) }.
+:- _isRobot(R0), _isRobot(R1), _isShelf(S), &tel{ (pickup(R0,S) & < <? pickup(R1,S)) | (putdown(R0,S) & < <? putdown(R1,S)) }.
 
 % waiting on picking station is not allowed (domain c)
 :- _position_station(P,C), position(R,C), 'position(R,C), _isRobot(R).
@@ -193,8 +192,7 @@ article_delivered(R,S,A) :- _ordered(O,A), _target(O,P), _position_station(P,C),
 :- _isShelf(S), not _contains_ordered_product(S,_), _isRobot(R), &tel{ <? pickup(R,S) }. % was  &tel{ < <? pickup(R,S) }
 
 % an agent not delivering anything may never pick up or put down a shelf
-:- _contains_ordered_product(S,A), _isRobot(R), &tel{ <* ~article_delivered(R,S,A) }, &tel{ <? pickup(R,S) }.
-:- _contains_ordered_product(S,A), _isRobot(R), &tel{ <* ~article_delivered(R,S,A) }, &tel{ <? putdown(R,S) }.
+:- _contains_ordered_product(S,A), _isRobot(R), &tel{ <* ~article_delivered(R,S,A) & <? (putdown(R,S) | pickup(R,S)) }.
 
 % ################################################################################
 % = CUSTOM CONSTRAINTS C
