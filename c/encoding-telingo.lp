@@ -189,7 +189,7 @@ article_delivered(R,S,A) :- _ordered(O,A), _target(O,P), _position_station(P,C),
 #program final.
 
 % shelves must not be picked up unless they contain an ordered product
-:- _isShelf(S), not _contains_ordered_product(S,_), _isRobot(R), &tel{ <? pickup(R,S) }. % was  &tel{ < <? pickup(R,S) }
+:- _isShelf(S), not _contains_ordered_product(S,_), _isRobot(R), &tel{ <? pickup(R,S) }.
 
 % an agent not delivering anything may never pick up or put down a shelf
 :- _contains_ordered_product(S,A), _isRobot(R), &tel{ <* ~article_delivered(R,S,A) & <? (putdown(R,S) | pickup(R,S)) }.

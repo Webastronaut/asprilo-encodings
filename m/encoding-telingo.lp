@@ -73,6 +73,9 @@ processed(A,R) :- _ordered(O,A), _shelved(S,A), _isRobot(R), _position(S,C), pos
 #program initial.
 steps(R,0,0) :- _isRobot(R).
 
+% agents should go directly to a shelf
+:- isRobot(R), isShelf(S), position(R,(XR,YR)), position(S,(XS,YS)), X=|XR-XS|, Y=|YR-YS|, &tel{ >> (on_target(R,S) & ~steps(R,X,Y)) }.
+
 #program dynamic.
 % helper predicates
 on_target(R,S) :- _ordered(O,A), _shelved(S,A), _isRobot(R), _position(S,C), position(R,C).
@@ -81,7 +84,7 @@ steps(R,X,Y) :- 'steps(R,X,Y), not move(R,_).
 
 #program final.
 % agents should go directly to a shelf
-:- on_target(R,S), _position(R,(XR,YR)), _position(S,(XS,YS)), X=|XR-XS|, Y=|YR-YS|, not steps(R,X,Y).
+%:- on_target(R,S), _position(R,(XR,YR)), _position(S,(XS,YS)), X=|XR-XS|, Y=|YR-YS|, not steps(R,X,Y).
 
 
 % ################################################################################
