@@ -1,4 +1,4 @@
-% https://github.com/potassco/asprilo-encodings/tree/develop
+% https://github.com/potassco/asprilo-encodings/tree/dd86e26a53e12d311e37eee8d7a8776579cb4b1f
 % based on files of domain b (see ./abc/encoding-b.ilp) from commit #dd86e26a53e12d311e37eee8d7a8776579cb4b1f
 
 % This is a simplification of domain A in sense that we completely ignore product quantities. With that, a shelf at a picking station can fill an order if it holds the required product.

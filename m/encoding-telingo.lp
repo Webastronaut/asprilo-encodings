@@ -1,4 +1,5 @@
-
+% https://github.com/potassco/asprilo-encodings/tree/dd86e26a53e12d311e37eee8d7a8776579cb4b1f
+% based on files of domain m (see ./m/encoding.ilp) from commit #dd86e26a53e12d311e37eee8d7a8776579cb4b1f
 
 % telingo asprilo-encodings/m/encoding-telingo.lp asprilo-benchmark-instances/moo/structured/1x2x4/100sc/r02/x11_y6_n66_r2_s16_ps1_pr16_u16_o2_N001.lp 1 --stats -V0
 

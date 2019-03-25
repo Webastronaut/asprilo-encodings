@@ -1,4 +1,4 @@
-% https://github.com/potassco/asprilo-encodings/tree/develop
+% https://github.com/potassco/asprilo-encodings/tree/dd86e26a53e12d311e37eee8d7a8776579cb4b1f
 % based on files of domain c (see ./abc/encoding-c.ilp) from commit #dd86e26a53e12d311e37eee8d7a8776579cb4b1f
 
 % This is a simplification of domain B in the sense that for a robot at a picking station, all deliveries can be processed in parallel and within a single time step.
