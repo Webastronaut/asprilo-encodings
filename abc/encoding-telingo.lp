@@ -5,6 +5,7 @@
 
 % telingo asprilo-encodings/c/encoding-telingo.lp asprilo-benchmark-instances/abc/structured/1x2x4/50sc/x11_y6_n66_r4_s8_ps1_pr48_u144_o8_N001.lp 1 --stats  --imax=35
 
+#program initial.
 % ################################################################################
 % + input.lp
 % ################################################################################
@@ -162,37 +163,35 @@ processed(A,C) :- 'processed(A,C).
 % + CUSTOM CONSTRAINTS C
 % ################################################################################
 
-#program initial.
-% helper
-contains_ordered_product(S,A) :- ordered(O,A), shelved(S,A).
+%#program initial.
+% helper preds
+%contains_ordered_product(S,A) :- ordered(O,A), shelved(S,A).
 
-#program dynamic.
+%#program dynamic.
+% helper preds
+%article_delivered(R,S,A) :- _ordered(O,A), _target(O,P), _position_station(P,C), _shelved(S,A), not _position(S,C), position(S,C), carries(R,S).
+%pickup(S) :- pickup(_,S). putdown(S) :- putdown(_,S).
 
-% helper pred
-article_delivered(R,S,A) :- _ordered(O,A), _target(O,P), _position_station(P,C), _shelved(S,A), not _position(S,C), position(S,C), carries(R,S).
+% no putdown between a pickup and a delivery -> not redundant due to rule #177, because this rule does not require a robot to deliver 
+% anything (as rule #177 does!) but to not perform a putdown if it actually delivers something (delivery)
+%:- _contains_ordered_product(S,A), _isRobot(R), not &tel{ pickup(R,S) -> (~putdown(R,S) >? article_delivered(R,S,A)) }.
 
-% no putdown between a pickup and a delivery
-:- _contains_ordered_product(S,A), _isRobot(R), not &tel{ pickup(R,S) -> >? (~putdown(R,S) >? article_delivered(R,S,A)) }.
+% only pickup if article is delivered afterwards (delivery)
+%:- _contains_ordered_product(S,A), _isRobot(R), not &tel{ pickup(R,S) -> >? article_delivered(R,S,A) }.
 
-% only pickup if article is delivered afterwards
-:- _contains_ordered_product(S,A), _isRobot(R), not &tel{ pickup(R,S) -> >? article_delivered(R,S,A) }.
+% shelves may not be picked up or put down more than once (shelf)
+%:- _isShelf(S), &tel{ (pickup(S) & < <? pickup(S)) | (putdown(S) & < <? putdown(S)) }.
 
-% only pickup if not processed before
-:- _contains_ordered_product(S,A), _isRobot(R0), pickup(R,S), &tel{ <? article_delivered(R0,S,A) }.
+% waiting on picking station is not allowed (picking station)
+%:- _position_station(_,C), position(R,C), 'position(R,C), _isRobot(R).
 
-% shelves may not be picked up or put down more than once
-:- _isRobot(R0), _isRobot(R1), _isShelf(S), &tel{ (pickup(R0,S) & < <? pickup(R1,S)) | (putdown(R0,S) & < <? putdown(R1,S)) }.
+%#program final.
 
-% waiting on picking station is not allowed (domain c)
-:- _position_station(P,C), position(R,C), 'position(R,C), _isRobot(R).
+% shelves must not be picked up unless they contain an ordered product (shelf)
+%:- _isShelf(S), not _contains_ordered_product(S,_), &tel{ <? pickup(S) }.
 
-#program final.
-
-% shelves must not be picked up unless they contain an ordered product
-:- _isShelf(S), not _contains_ordered_product(S,_), _isRobot(R), &tel{ <? pickup(R,S) }.
-
-% an agent not delivering anything may never pick up or put down a shelf
-:- _contains_ordered_product(S,A), _isRobot(R), &tel{ <* ~article_delivered(R,S,A) & <? (putdown(R,S) | pickup(R,S)) }.
+% an agent not delivering anything may never pick up or put down a shelf (robot)
+%:- _contains_ordered_product(S,A), _isRobot(R), &tel{ <* ~article_delivered(R,S,A) & <? (putdown(R,S) | pickup(R,S)) }.
 
 % ################################################################################
 % = CUSTOM CONSTRAINTS C

@@ -5,6 +5,8 @@
 
 % ./run-telingo-viz-output.sh m asprilo-benchmark-instances/moo/structured/1x2x4/100sc/r02/x11_y6_n66_r2_s16_ps1_pr16_u16_o2_N001.lp
 
+% prefix m for "manhattan (distance)" according to the constraint
+#program initial.
 % --------------------------------------------------------------------------------
 % REPRESENTATION
 
@@ -72,20 +74,35 @@ processed(A,R) :- _ordered(O,A), _shelved(S,A), _isRobot(R), _position(S,C), pos
 % + CUSTOM CONSTRAINTS M
 % ################################################################################
 #program initial.
+% helper preds
 steps(R,0,0) :- _isRobot(R).
 
 % agents should go directly to a shelf
-:- isRobot(R), isShelf(S), position(R,(XR,YR)), position(S,(XS,YS)), X=|XR-XS|, Y=|YR-YS|, &tel{ >> (on_target(R,S) & ~steps(R,X,Y)) }.
+%:- isRobot(R), isShelf(S), position(R,(XR,YR)), position(S,(XS,YS)), X=|XR-XS|, Y=|YR-YS|, &tel{ >> (on_target(R,S) & ~steps(R,X,Y)) }.
 
 #program dynamic.
-% helper predicates
-on_target(R,S) :- _ordered(O,A), _shelved(S,A), _isRobot(R), _position(S,C), position(R,C).
+% helper preds
+%on_target(R,S) :- _ordered(O,A), _shelved(S,A), _isRobot(R), _position(S,C), position(R,C).
 steps(R,X,Y) :- 'steps(R,XP,YP), move(R,(XM,YM)), X=XP+|XM|, Y=YP+|YM|.
 steps(R,X,Y) :- 'steps(R,X,Y), not move(R,_).
+waits(R) :- _isRobot(R), not move(R).
+
+posX(R,X) :- position(R,(X,_)), _isRobot(R).
+posY(R,Y) :- position(R,(_,Y)), _isRobot(R).
+
+% no running in circles or wobbling around
+:- position(R,C), _isRobot(R), &tel{ <? (position(R,C) & ~waits(R)) }.
 
 #program final.
-% agents should go directly to a shelf
-%:- on_target(R,S), _position(R,(XR,YR)), _position(S,(XS,YS)), X=|XR-XS|, Y=|YR-YS|, not steps(R,X,Y).
+on_target(R,S) :- _ordered(O,A), _shelved(S,A), _isRobot(R), _position(S,C), position(R,C).
+on_target(R) :- on_target(R,_).+
+
+% an agent may only be on its target shelf in the last timestep (as defined by specification)
+:- on_target(R), &tel{ < <? on_target(R) }.
+
+% an agent may never go beyond its goal TODO: Check if correct
+:- &tel{ <? posX(R,XR) }, on_target(R,S), _position((XR,_)), _position(S,(XS,_)), XR>XS.
+:- &tel{ <? posY(R,YR) }, on_target(R,S), _position((_,YR)), _position(S,(_,YS)), YR<YS.
 
 
 % ################################################################################
