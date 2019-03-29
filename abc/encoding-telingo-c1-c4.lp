@@ -156,3 +156,47 @@ processed(A,C) :- 'processed(A,C).
 % ################################################################################
 % = goal-D-b.ilp
 % ################################################################################
+
+
+
+% ################################################################################
+% + CUSTOM CONSTRAINTS C
+% ################################################################################
+
+#program initial.
+% helper preds
+contains_ordered_product(S,A) :- ordered(O,A), shelved(S,A).
+
+#program dynamic.
+% helper preds
+article_delivered(R,S,A) :- _ordered(O,A), _target(O,P), _position_station(P,C), _shelved(S,A), not _position(S,C), position(S,C), carries(R,S).
+pickup(S) :- pickup(_,S). putdown(S) :- putdown(_,S).
+
+% no putdown between a pickup and a delivery -> not redundant due to rule #177, because this rule does not require a robot to deliver anything (as rule #177 does!) but to not perform a putdown if it actually delivers something (delivery)
+%% (4) until, implication
+:- _contains_ordered_product(S,A), _isRobot(R), not &tel{ pickup(R,S) -> (~putdown(R,S) >? article_delivered(R,S,A)) }.
+
+% only pickup if article is delivered afterwards (delivery)
+%:- _contains_ordered_product(S,A), _isRobot(R), not &tel{ pickup(R,S) -> >? article_delivered(R,S,A) }.
+
+% shelves may not be picked up or put down more than once (shelf)
+%% (2) previous, before, disjunction
+%:- _isShelf(S), &tel{ (pickup(S) & < <? pickup(S)) | (putdown(S) & < <? putdown(S)) }.
+
+% waiting on picking station is not allowed (picking station)
+%% (1) previous
+:- _position_station(_,C), position(R,C), 'position(R,C), _isRobot(R).
+
+%#program final.
+
+% shelves must not be picked up unless they contain an ordered product (shelf) --> eventually unnötig, Regel deshalb raus
+%% (2) eventually
+%:- _isShelf(S), not _contains_ordered_product(S,_), &tel{ <? pickup(S) }.
+
+% an agent not delivering anything may never pick up or put down a shelf (robot)
+%% (3) always before, eventually, disjunction, conjunction
+%:- _contains_ordered_product(S,A), _isRobot(R), &tel{ <* ~article_delivered(R,S,A) & <? (putdown(R,S) | pickup(R,S)) }.
+
+% ################################################################################
+% = CUSTOM CONSTRAINTS C
+% ################################################################################

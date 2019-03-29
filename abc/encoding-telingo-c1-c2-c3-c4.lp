@@ -1,11 +1,11 @@
 % https://github.com/potassco/asprilo-encodings/tree/dd86e26a53e12d311e37eee8d7a8776579cb4b1f
-% based on files of domain b (see ./abc/encoding-b.ilp) from commit #dd86e26a53e12d311e37eee8d7a8776579cb4b1f
+% based on files of domain c (see ./abc/encoding-c.ilp) from commit #dd86e26a53e12d311e37eee8d7a8776579cb4b1f
 
-% This is a simplification of domain A in sense that we completely ignore product quantities. With that, a shelf at a picking station can fill an order if it holds the required product.
-% => one timestep per ordered product at the picking station (no matter the qty)
+% This is a simplification of domain B in the sense that for a robot at a picking station, all deliveries can be processed in parallel and within a single time step.
 
-% telingo asprilo-encodings/b/encoding-telingo.lp asprilo-benchmark-instances/abc/structured/1x2x4/25sc/x11_y6_n66_r1_s4_ps1_pr8_u24_o2_N001.lp 1 --stats  --imax=100
+% telingo asprilo-encodings/c/encoding-telingo.lp asprilo-benchmark-instances/abc/structured/1x2x4/50sc/x11_y6_n66_r4_s8_ps1_pr48_u144_o8_N001.lp 1 --stats  --imax=35
 
+#program initial.
 % ################################################################################
 % + input.lp
 % ################################################################################
@@ -34,7 +34,7 @@ position_station(station(P),(X,Y)) :- init(object(pickingStation,P),value(at,(X,
 position(robot(R),(X,Y)) :- init(object(robot,R),value(at,(X,Y))).
 position(shelf(S),(X,Y)) :- init(object(shelf,S),value(at,(X,Y))).
 
-highway(C) :- init(object(highway,_),value(at,C)). 
+highway(C) :- init(object(highway,_),value(at,C)).
 % ################################################################################
 % = input.lp
 % ################################################################################
@@ -46,9 +46,6 @@ highway(C) :- init(object(highway,_),value(at,C)).
 % ################################################################################
 direction((X,Y)) :- X=-1..1, Y=-1..1, |X+Y|=1.
 nextto((X,Y),(X',Y'),(X+X',Y+Y')) :- position((X,Y)), direction((X',Y')), position((X+X',Y+Y')).
-
-% was in dynamic part
-toShelf(S,C) :- shelved(S,A), ordered(O,A), target(O,P), position_station(P,C).
 
 #program dynamic.
 
@@ -108,8 +105,8 @@ moveto(C',C) :- _nextto(C',D,C), 'position(R,C'), move(R,D).
 % + control/highways.ilp
 % ################################################################################
 position(R,(X,Y)) :- positionX(R,X), positionY(R,Y).
-:- _highway(C), not carries(_,S), position(S,C), _isShelf(S).
-:- _highway(C), waits(R), position(R,C).
+:- _highway(C), not carries(_,S), position(S,C), _isShelf(S). % shelves must not stand on highways
+:- _highway(C), waits(R), position(R,C). % waiting on a highway is not allowed
 % ################################################################################
 % = control/highways.ilp
 % ################################################################################
@@ -119,17 +116,20 @@ position(R,(X,Y)) :- positionX(R,X), positionY(R,Y).
 % ################################################################################
 % + output-MPPD.ilp
 % ################################################################################
+#show.
+%#show init/2.
 
 occurs(object(robot,R),action(move,D)) :- move(robot(R),D).
 occurs(object(robot,R),action(pickup,())) :- pickup(robot(R),_).
 occurs(object(robot,R),action(putdown,())) :- putdown(robot(R),_).
 
-occurs(object(robot,R),action(deliver,(O,A))) :- process(product(A),order(O),C), toShelf(S,C), 'position(robot(R),C).
-occurs(object(robot,R),action(deliver,(O,A))) :- process(product(A),order(O),C), 'atShelf(S,C), 'carries(robot(R),S). % never occurs
-occurs(object(robot,R),action(deliver,(O,A))) :- process(product(A),order(O),C), position(S,C), 'carries(robot(R),S), _shelved(S,product(A)).
-occurs(object(robot,R),action(deliver,(O,A,N))) :- process(product(A),order(O),S,N), 'carries(robot(R),S).
+occurs_a(object(robot,R),action(deliver,(O,A))) :- process(product(A),order(O),C), toShelf(S,C), 'position(robot(R),C).
+occurs_b(object(robot,R),action(deliver,(O,A))) :- process(product(A),order(O),C), 'atShelf(S,C), 'carries(robot(R),S).
+occurs_c(object(robot,R),action(deliver,(O,A))) :- process(product(A),order(O),C), position(S,C), 'carries(robot(R),S), _shelved(S,product(A)).
+occurs_d(object(robot,R),action(deliver,(O,A,N))) :- process(product(A),order(O),S,N), 'carries(robot(R),S).
 
 #show occurs/2.
+
 % ################################################################################
 % = output-MPPD.ilp
 % ################################################################################
@@ -139,26 +139,16 @@ occurs(object(robot,R),action(deliver,(O,A,N))) :- process(product(A),order(O),S
 % ################################################################################
 % + goal-D-b.ilp
 % ################################################################################
-%#const rate=1.
+instant(shelf(S)) :- _position(shelf(S),C), _position_station(_,C), strategy.
 
-{ process(A,O,C) : _ordered(O,A), _target(O,P), _position_station(P,C) } 1. %rate.
-
-processed(A,O) :- process(A,O,C).
-processed(A,O) :- 'processed(A,O).
-
-:- process(A,O,C), 'processed(A,O). % what's been processed cannot be processed again
-
-process(A,C) :- process(A,O,C).
-process(C) :- process(A,C).
-
-:- process(A,C), not 'position(S,C) : _shelved(S,A). % a product cannot be processed when its respective shelf is not on proper position
-
-:- process(C), 'position(S,C), toShelf(S,C), not 'carries(_,S). % a shelf on correct position cannot be processed if it's not carried
-:- process(C), 'position(R,C), _isRobot(R), not waits(R). % a process action can only occur if the robot on that position does wait
+process(A,O,C) :- _ordered(O,A), _target(O,P), _position_station(P,C), _shelved(S,A), not _position(S,C), position(S,C).
+process(A,O,C) :- _ordered(O,A), _target(O,P), _position_station(P,C), _shelved(S,A), _position(S,C), carries(_,S).
+processed(A,C) :- process(A,O,C).
+processed(A,C) :- 'processed(A,C).
 
 #program final.
 
-:- _ordered(O,A), not processed(A,O).
+:- _ordered(O,A), _target(O,P), _position_station(P,C), not processed(A,C).
 
 :- carries(_,_).
 
@@ -170,40 +160,43 @@ process(C) :- process(A,C).
 
 
 % ################################################################################
-% + CUSTOM CONSTRAINTS B
+% + CUSTOM CONSTRAINTS C
 % ################################################################################
 
 #program initial.
-% helper
-contains_ordered_product(S,A) :- ordered(O,A), shelved(S,A).
+% helper preds
+%contains_ordered_product(S,A) :- ordered(O,A), shelved(S,A).
 
 #program dynamic.
-% helper pred
-article_delivered(robot(R),S,product(A)) :- process(product(A),order(O),C), position(S,C), 'carries(robot(R),S), _shelved(S,product(A)).
+% helper preds
+article_delivered(R,S,A) :- _ordered(O,A), _target(O,P), _position_station(P,C), _shelved(S,A), not _position(S,C), position(S,C), carries(R,S).
+pickup(S) :- pickup(_,S). putdown(S) :- putdown(_,S).
 
-% no putdown between a pickup and a delivery
-:- _contains_ordered_product(S,A), _isRobot(R), not &tel{ pickup(R,S) -> >? (~putdown(R,S) >? article_delivered(R,S,A)) }.
+% no putdown between a pickup and a delivery -> not redundant due to rule #177, because this rule does not require a robot to deliver anything (as rule #177 does!) but to not perform a putdown if it actually delivers something (delivery)
+%% (4) until, implication
+:- _contains_ordered_product(S,A), _isRobot(R), not &tel{ pickup(R,S) -> (~putdown(R,S) >? article_delivered(R,S,A)) }.
 
-% only pickup if article is delivered afterwards
-:- _contains_ordered_product(S,A), _isRobot(R), not &tel{ pickup(R,S) -> >? article_delivered(R,S,A) }.
+% only pickup if article is delivered afterwards (delivery)
+%:- _contains_ordered_product(S,A), _isRobot(R), not &tel{ pickup(R,S) -> >? article_delivered(R,S,A) }.
 
-% only pickup if not processed before
-:- _contains_ordered_product(S,A), _isRobot(R0), pickup(R,S), &tel{ <? article_delivered(R0,S,A) }.
+% shelves may not be picked up or put down more than once (shelf)
+%% (2) previous, before, disjunction
+:- _isShelf(S), &tel{ (pickup(S) & < <? pickup(S)) | (putdown(S) & < <? putdown(S)) }.
 
-% shelves may not be picked up or put down more than once
-:- _isRobot(R0), _isRobot(R1), _isShelf(S), &tel{ (pickup(R0,S) & < <? pickup(R1,S)) | (putdown(R0,S) & < <? putdown(R1,S)) }.
+% waiting on picking station is not allowed (picking station)
+%% (1) previous
+:- _position_station(_,C), position(R,C), 'position(R,C), _isRobot(R).
 
 #program final.
 
-% shelves must not be picked up unless they contain an ordered product
-:- _isShelf(S), not _contains_ordered_product(S,_), _isRobot(R), &tel{ <? pickup(R,S) }.
+% shelves must not be picked up unless they contain an ordered product (shelf) --> eventually unnötig, Regel deshalb raus
+%% (2) eventually
+%:- _isShelf(S), not _contains_ordered_product(S,_), &tel{ <? pickup(S) }.
 
-% an agent not delivering anything may never pickup a shelf
+% an agent not delivering anything may never pick up or put down a shelf (robot)
+%% (3) always before, eventually, disjunction, conjunction
 :- _contains_ordered_product(S,A), _isRobot(R), &tel{ <* ~article_delivered(R,S,A) & <? (putdown(R,S) | pickup(R,S)) }.
 
-% a shelf may never occupy the position of a picking station, which is not its target (domain b specific)
-:- position_station(P,CP), toShelf(S,CS), CP!=CS, &tel{ <? position(S,CP) }.
-
 % ################################################################################
-% = CUSTOM CONSTRAINTS B
+% = CUSTOM CONSTRAINTS C
 % ################################################################################
